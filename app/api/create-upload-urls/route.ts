@@ -1,5 +1,6 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getServerSession } from "next-auth/next";
 
 import {
   ALLOWED_UPLOAD_EXTENSIONS,
@@ -10,6 +11,8 @@ import {
   isAllowedUploadSize,
   sanitizeFilename,
 } from "@/lib/filename";
+import { authOptions } from "@/lib/auth";
+import { isAllowedUploadEmail } from "@/lib/upload-auth";
 
 export const runtime = "nodejs";
 
@@ -31,6 +34,22 @@ const s3Client = new S3Client({
 });
 
 export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user) {
+    return Response.json(
+      { error: "Sign in is required to upload files." },
+      { status: 401 },
+    );
+  }
+
+  if (!isAllowedUploadEmail(session.user.email)) {
+    return Response.json(
+      { error: "This account is not authorized to upload files." },
+      { status: 403 },
+    );
+  }
+
   const config = getUploadConfig();
 
   if (!config.ok) {
