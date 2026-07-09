@@ -36,7 +36,7 @@ type ExistingObjectMetadata = {
 };
 
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
+  region: process.env.APP_AWS_REGION,
 });
 
 export async function POST(request: Request) {
@@ -197,7 +197,7 @@ function getUploadConfig():
       cloudFrontBaseUrl: string;
     }
   | { ok: false; error: string } {
-  const region = process.env.AWS_REGION;
+  const region = process.env.APP_AWS_REGION;
   const bucketName = process.env.S3_BUCKET_NAME;
   const cloudFrontBaseUrl = process.env.CLOUDFRONT_BASE_URL?.replace(/\/+$/, "");
 
@@ -205,7 +205,7 @@ function getUploadConfig():
     return {
       ok: false,
       error:
-        "Missing AWS_REGION, S3_BUCKET_NAME, or CLOUDFRONT_BASE_URL environment variable.",
+        "Missing APP_AWS_REGION, S3_BUCKET_NAME, or CLOUDFRONT_BASE_URL environment variable.",
     };
   }
 
