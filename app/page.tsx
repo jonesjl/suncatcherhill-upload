@@ -70,11 +70,15 @@ export default async function Home() {
             <SignOutButton className={SECONDARY_BUTTON_CLASS}>Sign out</SignOutButton>
           </AuthMessage>
         ) : (
-          <UploadForm />
+          <UploadForm cloudFrontBaseUrl={getCloudFrontBaseUrl()} />
         )}
       </section>
     </main>
   );
+}
+
+function getCloudFrontBaseUrl(): string {
+  return process.env.CLOUDFRONT_BASE_URL?.replace(/\/+$/, "") ?? "";
 }
 
 function AuthMessage({

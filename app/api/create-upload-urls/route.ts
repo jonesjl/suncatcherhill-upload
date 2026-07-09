@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getServerSession } from "next-auth/next";
 
@@ -28,6 +28,12 @@ type ValidatedUploadFile = Required<Pick<UploadFileDescriptor, "name" | "size">>
     key: string;
     contentType: string;
   };
+
+type ExistingObjectMetadata = {
+  exists: boolean;
+  existingSize?: number;
+  existingLastModified?: string;
+};
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
@@ -97,24 +103,32 @@ export async function POST(request: Request) {
 
   const uploads = await Promise.all(
     files.map(async (file) => {
-      const uploadUrl = await getSignedUrl(
-        s3Client,
-        new PutObjectCommand({
-          Bucket: config.bucketName,
-          Key: file.key,
-          ContentType: file.contentType,
-        }),
-        { expiresIn: PRESIGNED_URL_EXPIRES_IN_SECONDS },
-      );
+      const [existingObject, uploadUrl] = await Promise.all([
+        getExistingObjectMetadata(config.bucketName, file.key),
+        getSignedUrl(
+          s3Client,
+          new PutObjectCommand({
+            Bucket: config.bucketName,
+            Key: file.key,
+            ContentType: file.contentType,
+          }),
+          { expiresIn: PRESIGNED_URL_EXPIRES_IN_SECONDS },
+        ),
+      ]);
+
+      const publicUrl = `${config.cloudFrontBaseUrl}/${file.key}`;
 
       return {
         id: file.id,
         originalName: file.name,
+        safeName: file.cleanedName,
         cleanedName: file.cleanedName,
         key: file.key,
+        publicUrl,
         uploadUrl,
-        cloudFrontUrl: `${config.cloudFrontBaseUrl}/${file.key}`,
+        cloudFrontUrl: publicUrl,
         contentType: file.contentType,
+        ...existingObject,
       };
     }),
   );
@@ -210,6 +224,34 @@ function getSafeContentType(value: unknown): string {
   }
 
   return contentType;
+}
+
+async function getExistingObjectMetadata(
+  bucketName: string,
+  key: string,
+): Promise<ExistingObjectMetadata> {
+  const listedObjects = await s3Client.send(
+    new ListObjectsV2Command({
+      Bucket: bucketName,
+      Prefix: key,
+      MaxKeys: 1,
+    }),
+  );
+  const existingObject = listedObjects.Contents?.find((object) => object.Key === key);
+
+  if (!existingObject) {
+    return { exists: false };
+  }
+
+  return {
+    exists: true,
+    ...(typeof existingObject.Size === "number"
+      ? { existingSize: existingObject.Size }
+      : {}),
+    ...(existingObject.LastModified
+      ? { existingLastModified: existingObject.LastModified.toISOString() }
+      : {}),
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

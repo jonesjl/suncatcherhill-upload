@@ -66,10 +66,9 @@ function sanitizeFilenameBase(base: string): string {
   const cleaned = base
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
     .replace(/[^\x20-\x7e]/g, "")
-    .replace(/[ _]+/g, "-")
-    .replace(/[^a-z0-9.-]+/g, "-")
+    .replace(/[ ._]+/g, "-")
+    .replace(/[^A-Za-z0-9-]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, MAX_BASE_FILENAME_LENGTH)
