@@ -1,0 +1,29 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - env | grep -e '^APP_AWS_REGION=' >> .env.production
+        - env | grep -e '^S3_BUCKET_NAME=' >> .env.production
+        - env | grep -e '^CLOUDFRONT_BASE_URL=' >> .env.production
+        - env | grep -e '^AUTH_TRUST_HOST=' >> .env.production
+        - env | grep -e '^AUTH_URL=' >> .env.production
+        - env | grep -e '^AUTH_SECRET=' >> .env.production
+        - env | grep -e '^COGNITO_CLIENT_ID=' >> .env.production
+        - env | grep -e '^COGNITO_CLIENT_SECRET=' >> .env.production
+        - env | grep -e '^COGNITO_ISSUER=' >> .env.production
+        - env | grep -e '^ALLOWED_UPLOAD_EMAILS=' >> .env.production
+        - env | grep -e '^UPLOAD_AWS_ACCESS_KEY_ID=' >> .env.production
+        - env | grep -e '^UPLOAD_AWS_SECRET_ACCESS_KEY=' >> .env.production
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
